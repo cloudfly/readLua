@@ -43,7 +43,8 @@ typedef struct stringtable {
 
 
 /*
-** informations about a call
+* informations about a call
+* 关于调用的信息
 */
 typedef struct CallInfo {
   StkId base;  /* base for this function */
@@ -131,7 +132,8 @@ struct lua_State {
 
 
 /*
-** Union of all collectable objects
+* Union of all collectable objects
+* 所有可回收对象的合集
 */
 union GCObject {
   GCheader gch;
@@ -146,6 +148,10 @@ union GCObject {
 
 
 /* macros to convert a GCObject into a specific value */
+/*
+ * 宏
+ * 把 GCObject 转为指定的类型值
+ */
 #define rawgco2ts(o)	check_exp((o)->gch.tt == LUA_TSTRING, &((o)->ts))
 #define gco2ts(o)	(&rawgco2ts(o)->tsv)
 #define rawgco2u(o)	check_exp((o)->gch.tt == LUA_TUSERDATA, &((o)->u))
@@ -159,6 +165,9 @@ union GCObject {
 #define gco2th(o)	check_exp((o)->gch.tt == LUA_TTHREAD, &((o)->th))
 
 /* macro to convert any Lua object into a GCObject */
+/* 宏
+ * 把任意类型的变量转成GCObject
+ */
 #define obj2gco(v)	(cast(GCObject *, (v)))
 
 

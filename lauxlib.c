@@ -155,6 +155,10 @@ LUALIB_API void luaL_checkany (lua_State *L, int narg) {
 }
 
 
+/*
+ * 检测参数 narg 是不是字符串并返回该字符串, 参数 narg 为变量在栈中的偏移量
+ * 第三个参数 len 如果不是NULL，就将字符串长度赋给它
+ */
 LUALIB_API const char *luaL_checklstring (lua_State *L, int narg, size_t *len) {
   const char *s = lua_tolstring(L, narg, len);
   if (!s) tag_error(L, narg, LUA_TSTRING);

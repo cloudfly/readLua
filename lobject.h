@@ -79,7 +79,9 @@ typedef struct lua_TValue {
 } TValue;
 
 
-/* Macros to test type */
+/* 宏 
+ * 用来检测变量类型的, 返回true 或 false
+ */
 #define ttisnil(o)	(ttype(o) == LUA_TNIL)
 #define ttisnumber(o)	(ttype(o) == LUA_TNUMBER)
 #define ttisstring(o)	(ttype(o) == LUA_TSTRING)
@@ -90,7 +92,10 @@ typedef struct lua_TValue {
 #define ttisthread(o)	(ttype(o) == LUA_TTHREAD)
 #define ttislightuserdata(o)	(ttype(o) == LUA_TLIGHTUSERDATA)
 
-/* Macros to access values */
+/* Macros to access values
+ * 宏
+ * 用来取值的
+ */
 #define ttype(o)	((o)->tt)
 #define gcvalue(o)	check_exp(iscollectable(o), (o)->value.gc)
 #define pvalue(o)	check_exp(ttislightuserdata(o), (o)->value.p)
@@ -107,7 +112,8 @@ typedef struct lua_TValue {
 #define l_isfalse(o)	(ttisnil(o) || (ttisboolean(o) && bvalue(o) == 0))
 
 /*
-** for internal debug only
+* for internal debug only
+* 只用于内部debug
 */
 #define checkconsistency(obj) \
   lua_assert(!iscollectable(obj) || (ttype(obj) == (obj)->value.gc->gch.tt))
@@ -117,7 +123,10 @@ typedef struct lua_TValue {
   ((ttype(obj) == (obj)->value.gc->gch.tt) && !isdead(g, (obj)->value.gc)))
 
 
-/* Macros to set values */
+/* Macros to set values
+ * 宏
+ * 用以set value 的
+ */
 #define setnilvalue(obj) ((obj)->tt=LUA_TNIL)
 
 #define setnvalue(obj,x) \
@@ -247,9 +256,9 @@ typedef struct Proto {
 
   TValue *k;  /* constants used by the function */
   Instruction *code;
-  struct Proto **p;  /* functions defined inside the function */
+  struct Proto **p;  /* 定义在函数内部的函数，内部函数 functions defined inside the function */
   int *lineinfo;  /* map from opcodes to source lines */
-  struct LocVar *locvars;  /* information about local variables */
+  struct LocVar *locvars;  /* 有关 local 变量的一些信息，information about local variables */
   TString **upvalues;  /* upvalue names */
   TString  *source;
   int sizeupvalues;
@@ -290,7 +299,7 @@ typedef struct UpVal {
   TValue *v;  /* points to stack or to its own value */
   union {
     TValue value;  /* the value (when closed) */
-    struct {  /* double linked list (when open) */
+    struct {  /* 双向链表 double linked list (when open) */
       struct UpVal *prev;
       struct UpVal *next;
     } l;

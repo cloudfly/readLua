@@ -434,8 +434,17 @@ LUA_API void lua_pushnumber (lua_State *L, lua_Number n) {
 }
 
 
+/*
+ * 把一个带值的数字放到栈顶
+ */
 LUA_API void lua_pushinteger (lua_State *L, lua_Integer n) {
   lua_lock(L);
+  /*
+   * cast_num：把参数 n 强转成 lua_Integer 类型，lua_Integer 实际是 ptrdiff_t 类型，实际就是一个 signed 类型
+   * 下面 setnvalue 实际就是下面的操作 
+   * L->top->value.n = cast_num(n)
+   * L->top->tt = LUA_TNUMBER       LUA_TNUMBER 就是一个数字，标志变量类型的
+   */
   setnvalue(L->top, cast_num(n));
   api_incr_top(L);
   lua_unlock(L);
