@@ -30,6 +30,13 @@
 #include "lvm.h"
 
 
+/*
+ * 大部分API 都需要先 lua_lock(L)
+ *
+ * 完成功能后再lua_unlock(L)
+ */
+
+
 
 const char lua_ident[] =
   "$Lua: " LUA_RELEASE " " LUA_COPYRIGHT " $\n"
@@ -46,6 +53,9 @@ const char lua_ident[] =
 
 
 
+/*
+ * 把索引值翻译成实际的地址，返回TValue
+ */
 static TValue *index2adr (lua_State *L, int idx) {
   if (idx > 0) {
     TValue *o = L->base + (idx - 1);
@@ -309,10 +319,20 @@ LUA_API int lua_lessthan (lua_State *L, int index1, int index2) {
 }
 
 
+/*
+ * 把制定的数据转成number类型，
+ * 其实只有字符串类型可以转，其他类型都不行
+ * 十六进制的也OK (带有字母x/X的)
+ */
 
 LUA_API lua_Number lua_tonumber (lua_State *L, int idx) {
   TValue n;
   const TValue *o = index2adr(L, idx);
+
+  /**
+   * tonumber是看能不能转成数字类型
+   * nvalue 就直接把 o 的value设置成n，类型tt 赋值成lua 的 number类型
+   * */
   if (tonumber(o, &n))
     return nvalue(o);
   else

@@ -1,0 +1,76 @@
+
+========================================================
+关键字
+    and     break   do      else        elseif
+    end     false   for     function    if
+    in      local   nil     not         or 
+    repeat  return  then    true        until   
+    while
+
+=========================================================
+TOKEN
+    +   -   *   /   %   ^   #
+    ==  ~=  <=  >=  <   >   =
+    (   )   {   }   [   ]   
+    ;   :   ,   .   ..  ...
+
+=========================================================
+规则
+
+    变量
+    var ::= Name
+    var ::= prefixexp `[` exp `]`
+    var ::= prefixexp `.` Name
+
+    chunk ::= {stat [`;`]}  语句组
+    block ::= chunk         语句块
+    stat ::= do block end
+    stat ::= varlist1 `=` explist1
+    varlist1 :== var {`,` var}
+    varlist1 ::= exp {`,` exp}
+
+    stat ::= while exp do block end
+    stat ::= repeat block until exp
+    stat ::= if exp then block {elseif exp then block} [else block] end
+    stat ::= return [explist1]
+    stat ::= break
+    stat ::= for Name `=` exp `,` exp [`,` exp] do block end
+    stat ::= for namelist in explist1 do block end
+    namelist ::= Name {`,` Name}
+    stat ::= functioncall
+    stat ::= local namelist [`=` explist1]
+
+    exp ::= prefixexp
+    exp ::= nil | false | true
+    exp ::= Number 
+    exp ::= String
+    exp ::= function
+    exp ::= tableconstructor
+    exp ::= `...`
+    exp ::= exp binop exp
+    exp ::= unop exp
+    prefixexp ::= var | functioncall | `(` exp `)`
+
+
+    tableconstructor ::= `{` [fieldlist] `}`
+    fieldlist ::= field {fieldsep field} [fieldsep]
+    field ::= `[` exp `]` `=` exp | Name `=` exp | exp
+    fieldsep ::= `,` | `;`
+
+
+    functioncall ::= prefixexp args
+    functioncall ::= prefixexp `:` Name args
+
+    args ::= `(` [explist1] `)`
+    args ::= tableconstructor
+    args ::= String
+
+    function ::= function funcbody
+    funcbody ::= `(` [parlist1] `)` block end
+
+    stat ::= function funcname funcbody
+    stat ::= local function Name funcbody
+    funcname ::= Name {`.` Name} [`:` Name]
+
+
+    

@@ -370,16 +370,16 @@ static void Arith (lua_State *L, StkId ra, const TValue *rb,
 
 
 void luaV_execute (lua_State *L, int nexeccalls) {
-  LClosure *cl;
-  StkId base;
-  TValue *k;
-  const Instruction *pc;
+  LClosure *cl; // 闭包
+  StkId base;   // TValue
+  TValue *k;    // TValue
+  const Instruction *pc;    // unsigned int
  reentry:  /* entry point */
-  lua_assert(isLua(L->ci));
+  lua_assert(isLua(L->ci)); //判断ci 是不是个 Lua 函数
   pc = L->savedpc;
-  cl = &clvalue(L->ci->func)->l;
-  base = L->base;
-  k = cl->p->k;
+  cl = &clvalue(L->ci->func)->l;    // Closure->LClosure
+  base = L->base;       //lua_State->StkId
+  k = cl->p->k;         //Proto->TValue
   /* main loop of interpreter */
   for (;;) {
     const Instruction i = *pc++;

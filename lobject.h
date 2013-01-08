@@ -31,12 +31,6 @@
 
 
 /*
-** Union of all collectable objects
-*/
-typedef union GCObject GCObject;
-
-
-/*
 ** Common Header for all collectable objects (in macro form, to be
 ** included in other objects)
 */
@@ -71,11 +65,11 @@ typedef union {
 ** Tagged Values
 */
 
-#define TValuefields	Value value; int tt
-
 typedef struct lua_TValue {
   Value value;
-  int tt;
+
+  int tt;   /*标志变量的类型，实际就是不同的数字
+              lua.h 中 define 的 */
 } TValue;
 
 
@@ -178,8 +172,9 @@ typedef struct lua_TValue {
 
 
 /*
-** different types of sets, according to destination
-*/
+ * different types of sets, according to destination
+ * 类型转换
+ */
 
 /* from stack to (same) stack */
 #define setobjs2s	setobj
@@ -203,7 +198,7 @@ typedef struct lua_TValue {
 
 
 
-typedef TValue *StkId;  /* index to stack elements */
+typedef TValue *StkId;  /* TValue 的指针 index to stack elements */
 
 
 /*
@@ -231,6 +226,9 @@ typedef union TString {
 
 
 typedef union Udata {
+  /*
+   * L_Umaxalign : union {double u; void* s ; long l;}
+   */
   L_Umaxalign dummy;  /* ensures maximum alignment for `local' udata */
   struct {
     // CommonHeader
@@ -246,8 +244,9 @@ typedef union Udata {
 
 
 /*
-** Function Prototypes
-*/
+ * Function Prototypes
+ * 函数原型
+ */
 typedef struct Proto {
   // CommonHeader
   GCObject *next;
@@ -296,6 +295,7 @@ typedef struct UpVal {
   GCObject *next;
   lu_byte tt;
   lu_byte marked;
+
   TValue *v;  /* points to stack or to its own value */
   union {
     TValue value;  /* the value (when closed) */
@@ -308,16 +308,12 @@ typedef struct UpVal {
 
 
 /*
-** Closures
-*/
-
-#define ClosureHeader \
-	CommonHeader; lu_byte isC; lu_byte nupvalues; GCObject *gclist; \
-	struct Table *env
+ * Closures
+ * 闭包
+ */
 
 typedef struct CClosure {
 
-  // ClosureHeader
   GCObject *next;
   lu_byte tt;
   lu_byte marked;
@@ -332,7 +328,7 @@ typedef struct CClosure {
 
 
 typedef struct LClosure {
-  // ClosureHeader;
+
   GCObject *next;
   lu_byte tt;
   lu_byte marked;
@@ -347,8 +343,8 @@ typedef struct LClosure {
 
 
 typedef union Closure {
-  CClosure c;
-  LClosure l;
+  CClosure c;       //C语言函数闭包
+  LClosure l;       //Lua函数闭包
 } Closure;
 
 
@@ -357,8 +353,9 @@ typedef union Closure {
 
 
 /*
-** Tables
-*/
+ * Tables
+ * 表
+ */
 
 typedef union TKey {
   struct {
@@ -391,8 +388,8 @@ typedef struct Table {
 } Table;
 
 /*
-** `module' operation for hashing (size is always a power of 2)
-*/
+ * `module' operation for hashing (size is always a power of 2)
+ */
 #define lmod(s,size) \
 	(check_exp((size&(size-1))==0, (cast(int, (s) & ((size)-1)))))
 

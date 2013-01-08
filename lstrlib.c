@@ -24,7 +24,17 @@
 #define uchar(c)        ((unsigned char)(c))
 
 
+/*
+ *  都是 luaL_checkxxxx 来获得函数的参数，函数的第二个参数是栈中的地址, 
+ *
+ *  获得参数后进行运算，之后调用lua_pushxxxx 将运算结果放到栈当中
+ */
 
+
+
+/*
+ * 获得字符串的长度
+ */
 static int str_len (lua_State *L) {
   size_t l;
   luaL_checklstring(L, 1, &l);

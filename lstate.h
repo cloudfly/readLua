@@ -17,27 +17,36 @@
 
 struct lua_longjmp;  /* defined in ldo.c */
 
+/* //chain list of long jump buffers 
+struct lua_longjmp {
+  struct lua_longjmp *previous;
+  luai_jmpbuf b;
+  volatile int status;   //error code 
+};
+*/
+
+
 
 /* table of globals */
+/* 全局的表 */
 #define gt(L)	(&L->l_gt)
 
 /* registry */
 #define registry(L)	(&G(L)->l_registry)
 
 
-/* extra stack space to handle TM calls and some other extras */
-#define EXTRA_STACK   5
-
-
-#define BASIC_CI_SIZE           8
-
-#define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
+/* extra stack space to handle TM calls and some other extras 
+ *  分配栈的大小
+ * */
+#define EXTRA_STACK         5
+#define BASIC_CI_SIZE       8
+#define BASIC_STACK_SIZE    40
 
 
 
 typedef struct stringtable {
   GCObject **hash;
-  lu_int32 nuse;  /* number of elements */
+  lu_int32 nuse;  /*number of elements*/
   int size;
 } stringtable;
 
@@ -104,7 +113,7 @@ struct lua_State {
   StkId top;  /* first free slot in the stack */
   StkId base;  /* base of current function */
   global_State *l_G;
-  CallInfo *ci;  /* call info for current function */
+  CallInfo *ci;  /* 当前函数的信息 */
   const Instruction *savedpc;  /* `savedpc' of current function */
   StkId stack_last;  /* last free slot in the stack */
   StkId stack;  /* stack base */
@@ -135,7 +144,7 @@ struct lua_State {
 * Union of all collectable objects
 * 所有可回收对象的合集
 */
-union GCObject {
+typedef union GCObject {
   GCheader gch;
   union TString ts;
   union Udata u;
@@ -144,7 +153,7 @@ union GCObject {
   struct Proto p;
   struct UpVal uv;
   struct lua_State th;  /* thread */
-};
+} GCObject;
 
 
 /* macros to convert a GCObject into a specific value */

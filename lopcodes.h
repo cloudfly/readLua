@@ -27,16 +27,34 @@
   unsigned argument.
 ===========================================================================*/
 
+/*=======================================================================
+ *
+ * 指令都是非符号整数
+ *
+ * 所有指令的 前6位 都是 opcode
+ * 指令是有以下几块的:
+ *  'A' : 8 位
+ *  'B' : 9 位
+ *  'C' : 9 位
+ *  'Bx': 18 位 ('B' 和 'C' 合在一起)
+ *  'sBx' : Bx 的有符号型
+ *
+ =======================================================================*/
 
+
+/*
+ * 基本指令的定义
+ */
 enum OpMode {iABC, iABx, iAsBx};  /* basic instruction format */
 
 
 /*
-** size and position of opcode arguments.
-*/
+ * size and position of opcode arguments.
+ * 每种 opcode 参数的位数 和 所在位置
+ */
 #define SIZE_C		9
 #define SIZE_B		9
-#define SIZE_Bx		(SIZE_C + SIZE_B)
+#define SIZE_Bx		18
 #define SIZE_A		8
 
 #define SIZE_OP		6
