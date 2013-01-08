@@ -1,0 +1,1 @@
+setnvalue(obj,x) 把obj设置成number类型，值为x;

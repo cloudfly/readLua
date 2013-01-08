@@ -51,57 +51,77 @@ const char lua_ident[] =
 
 #define api_incr_top(L)   {api_check(L, L->top < L->ci->top); L->top++;}
 
+/*
+lua_State 中的几个值
 
+StkId top       这个域表示在这个栈上的第一个空闲的slot。
+StkId base      这个域表示当前所在函数的base。这个base可以说就是栈底。只不过是当前函数的。
+StkId stack_last在栈上的最后一个空闲的slot
+StkId stack     栈的base,这个是整个栈的栈底。
+StkId是一个Tvalue类型的指针。i
+*/
 
 /*
  * 把索引值翻译成实际的地址，返回TValue
  */
-static TValue *index2adr (lua_State *L, int idx) {
-  if (idx > 0) {
-    TValue *o = L->base + (idx - 1);
-    api_check(L, idx <= L->ci->top - L->base);
-    if (o >= L->top) return cast(TValue *, luaO_nilobject);
-    else return o;
-  }
-  else if (idx > LUA_REGISTRYINDEX) {
-    api_check(L, idx != 0 && -idx <= L->top - L->base);
-    return L->top + idx;
-  }
-  else switch (idx) {  /* pseudo-indices */
-    case LUA_REGISTRYINDEX: return registry(L);
-    case LUA_ENVIRONINDEX: {
-      Closure *func = curr_func(L);
-      sethvalue(L, &L->env, func->c.env);
-      return &L->env;
-    }
-    case LUA_GLOBALSINDEX: return gt(L);
-    default: {
-      Closure *func = curr_func(L);
-      idx = LUA_GLOBALSINDEX - idx;
-      return (idx <= func->c.nupvalues)
-                ? &func->c.upvalue[idx-1]
-                : cast(TValue *, luaO_nilobject);
-    }
-  }
-}
-
-
-static Table *getcurrenv (lua_State *L) {
-  if (L->ci == L->base_ci)  /* no enclosing function? */
-    return hvalue(gt(L));  /* use global table as environment */
-  else {
-    Closure *func = curr_func(L);
-    return func->c.env;
-  }
-}
-
-
-void luaA_pushobject (lua_State *L, const TValue *o) {
+static TValue *index2adr (lua_State *L, int idx) {                          如图:
+  if (idx > 0) {                                                             ---------
+    TValue *o = L->base + (idx - 1);                                        |         | <---- stack_last 最后一个空位置
+    api_check(L, idx <= L->ci->top - L->base);                               ---------
+    if (o >= L->top) return cast(TValue *, luaO_nilobject);                 |         |
+    else return o;                                                           ---------
+  }                                                                         |         |
+  else if (idx > LUA_REGISTRYINDEX) {                                        ---------
+    api_check(L, idx != 0 && -idx <= L->top - L->base);                     |         |
+    return L->top + idx;                                                     ---------
+  }                                                                         |         |
+  else switch (idx) {  /* pseudo-indices */                                  ---------
+    case LUA_REGISTRYINDEX: return registry(L);                             |         |
+    case LUA_ENVIRONINDEX: {                                                 ---------
+      Closure *func = curr_func(L);                                         |         |
+      sethvalue(L, &L->env, func->c.env);                                    ---------
+      return &L->env;                                                       |         | <---- top   第一个空位置        
+    }                                                                        ---------
+    case LUA_GLOBALSINDEX: return gt(L);                                    |  used   | <---- index 为 -1 时所取的位置       index2adr 中 idx 参数为正数时，位置为 base + idx - 1
+    default: {                                                               ---------
+      Closure *func = curr_func(L);                                         |  used   |                                      为负数时，就从上往下找，实际位置为 top + idx
+      idx = LUA_GLOBALSINDEX - idx;                                          ---------
+      return (idx <= func->c.nupvalues)                                     |  used   |                                      idx 为 0 时表示无效
+                ? &func->c.upvalue[idx-1]                                    ---------
+                : cast(TValue *, luaO_nilobject);                           |  used   | <---- index 为 2 时所取的位置
+    }                                                                        ---------
+  }                                                                         |  used   | <---- base  当前函数的位置. 实际就是index 为 1 的地方
+}                                                                            ---------
+                                                                            |  used   |
+                                                                             ---------
+                                                                            |  used   |
+                                                                             ---------
+                                                                            |  used   |
+                                                                             ---------
+                                                                            |  used   |
+                                                                             ---------
+                                                                            |  used   |
+                                                                             ---------
+                                                                            |  used   | <---- stack 整个栈的基地址
+                                                                             ---------
+static Table *getcurrenv (lua_State *L) {                                   
+  if (L->ci == L->base_ci)  /* no enclosing function? */                    
+    return hvalue(gt(L));  /* use global table as environment */            
+  else {                                                                    
+    Closure *func = curr_func(L);                                           
+    return func->c.env;                                                     
+  }                                                                         
+}                                                                           
+                                                                            
+void luaA_pushobject (lua_State *L, const TValue *o) {                                                                                                                                
   setobj2s(L, L->top, o);
   api_incr_top(L);
 }
 
-
+/*
+ * 确保堆栈上至少有 extra 个空位。 如果不能把堆栈扩展到相应的尺寸，函数返回 false 。
+ * 这个函数永远不会缩小堆栈； 如果堆栈已经比需要的大了，那么就放在那里不会产生变化
+ */
 LUA_API int lua_checkstack (lua_State *L, int size) {
   int res = 1;
   lua_lock(L);
@@ -137,6 +157,9 @@ LUA_API void lua_setlevel (lua_State *from, lua_State *to) {
 }
 
 
+/*
+ * 不用管这个函数
+ */
 LUA_API lua_CFunction lua_atpanic (lua_State *L, lua_CFunction panicf) {
   lua_CFunction old;
   lua_lock(L);
@@ -147,6 +170,14 @@ LUA_API lua_CFunction lua_atpanic (lua_State *L, lua_CFunction panicf) {
 }
 
 
+/*
+ * 创建一个新线程，并将其压入堆栈， 并返回维护这个线程的 lua_State 指针。
+ * 这个函数返回的新状态机共享原有状态机中的所有对象（比如一些 table），
+ * 但是它有独立的执行堆栈。
+ *
+ * 没有显式的函数可以用来关闭或销毁掉一个线程。
+ * 线程跟其它 Lua 对象一样是垃圾收集的条目之一。
+ */
 LUA_API lua_State *lua_newthread (lua_State *L) {
   lua_State *L1;
   lua_lock(L);
@@ -166,11 +197,22 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
 */
 
 
+/*
+ * 返回栈顶元素的索引。
+ * 因为索引是从 1 开始编号的， 所以这个结果等于堆栈上的元素个数
+ * （因此返回 0 表示堆栈为空）
+ */
 LUA_API int lua_gettop (lua_State *L) {
   return cast_int(L->top - L->base);
 }
 
 
+/*
+ * 参数允许传入任何可接受的索引以及 0 。
+ * 它将把堆栈的栈顶设为这个索引。
+ * 如果新的栈顶比原来的大，超出部分的新元素将被填为 nil 。
+ * 如果 index 为 0 ，把栈上所有元素移除
+ */
 LUA_API void lua_settop (lua_State *L, int idx) {
   lua_lock(L);
   if (idx >= 0) {
@@ -187,6 +229,10 @@ LUA_API void lua_settop (lua_State *L, int idx) {
 }
 
 
+/*
+ * 从给定有效索引处移除一个元素， 把这个索引之上的所有元素移下来填补上这个空隙。
+ * 不能用伪索引来调用这个函数， 因为伪索引并不指向真实的栈上的位置
+ */
 LUA_API void lua_remove (lua_State *L, int idx) {
   StkId p;
   lua_lock(L);
@@ -198,6 +244,10 @@ LUA_API void lua_remove (lua_State *L, int idx) {
 }
 
 
+/*
+ * 把栈顶元素插入指定的有效索引处， 并依次移动这个索引之上的元素。
+ * 不要用伪索引来调用这个函数， 因为伪索引不是真正指向堆栈上的位置 
+ */
 LUA_API void lua_insert (lua_State *L, int idx) {
   StkId p;
   StkId q;
@@ -210,6 +260,10 @@ LUA_API void lua_insert (lua_State *L, int idx) {
 }
 
 
+/*
+ * 把栈顶元素移动到给定位置（并且把这个栈顶元素弹出）， 
+ * 不移动任何元素（因此在那个位置处的值被覆盖掉）
+ */
 LUA_API void lua_replace (lua_State *L, int idx) {
   StkId o;
   lua_lock(L);
@@ -255,18 +309,27 @@ LUA_API int lua_type (lua_State *L, int idx) {
 }
 
 
+/*
+ * 返回 tp 表示的类型名， 这个 tp 必须是 lua_type 可能返回的值中之一
+ */
 LUA_API const char *lua_typename (lua_State *L, int t) {
   UNUSED(L);
   return (t == LUA_TNONE) ? "no value" : luaT_typenames[t];
 }
 
 
+/*
+ * 当给定索引的值是一个 C 函数时，返回 1 ，否则返回 0 
+ */
 LUA_API int lua_iscfunction (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
   return iscfunction(o);
 }
 
 
+/*
+ * 当给定索引的值是一个数字，或是一个可转换为数字的字符串时，返回 1 ，否则返回 0 
+ */
 LUA_API int lua_isnumber (lua_State *L, int idx) {
   TValue n;
   const TValue *o = index2adr(L, idx);
@@ -274,18 +337,30 @@ LUA_API int lua_isnumber (lua_State *L, int idx) {
 }
 
 
+/*
+ * 当给定索引的值是一个字符串或是一个数字（数字总能转换成字符串）时，返回 1 ，否则返回 0 
+ */
 LUA_API int lua_isstring (lua_State *L, int idx) {
   int t = lua_type(L, idx);
   return (t == LUA_TSTRING || t == LUA_TNUMBER);
 }
 
 
+/*
+ * 当给定索引的值是一个 userdata 
+ * （无论是完整的 userdata 还是 light userdata ）时，返回 1 ，否则返回 0
+ */
 LUA_API int lua_isuserdata (lua_State *L, int idx) {
   const TValue *o = index2adr(L, idx);
   return (ttisuserdata(o) || ttislightuserdata(o));
 }
 
 
+/*
+ * 如果两个索引 index1 和 index2 处的值简单地相等 （不调用元方法）则返回 1 。
+ * 否则返回 0 。
+ * 如果任何一个索引无效也返回 0 
+ */
 LUA_API int lua_rawequal (lua_State *L, int index1, int index2) {
   StkId o1 = index2adr(L, index1);
   StkId o2 = index2adr(L, index2);
@@ -294,6 +369,11 @@ LUA_API int lua_rawequal (lua_State *L, int index1, int index2) {
 }
 
 
+/*
+ * 如果依照 Lua 中 == 操作符语义，
+ * 索引 index1 和 index2 中的值相同的话，返回 1 。 否则返回 0 。 
+ * 如果任何一个索引无效也会返回 0。 
+ */
 LUA_API int lua_equal (lua_State *L, int index1, int index2) {
   StkId o1, o2;
   int i;
@@ -306,6 +386,11 @@ LUA_API int lua_equal (lua_State *L, int index1, int index2) {
 }
 
 
+/*
+ * 如果索引 index1 处的值小于 索引 index2 处的值时，返回 1 ； 否则返回 0 。
+ * 其语义遵循 Lua 中的 < 操作符（就是说，有可能调用元方法）。
+ * 如果任何一个索引无效，也会返回 0 
+ */
 LUA_API int lua_lessthan (lua_State *L, int index1, int index2) {
   StkId o1, o2;
   int i;
@@ -378,6 +463,12 @@ LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
 }
 
 
+/*
+ * 返回指定的索引处的值的长度。
+ * 对于 string ，那就是字符串的长度； 
+ * 对于 table ，是取长度操作符 ('#') 的结果；
+ * 对于 userdata ，就是为其分配的内存块的尺寸； 对于其它值，为 0 。
+ */
 LUA_API size_t lua_objlen (lua_State *L, int idx) {
   StkId o = index2adr(L, idx);
   switch (ttype(o)) {
@@ -560,6 +651,11 @@ LUA_API int lua_pushthread (lua_State *L) {
 */
 
 
+/*
+ * 把 t[k] 值压入堆栈， 这里的 t 是指有效索引 index 指向的值， 而 k 则是栈顶放的值。
+ * 这个函数会弹出堆栈上的 key （把结果放在栈上相同位置）。
+ * 在 Lua 中，这个函数可能触发对应 "index" 事件的元方法 
+ */
 LUA_API void lua_gettable (lua_State *L, int idx) {
   StkId t;
   lua_lock(L);
@@ -570,6 +666,10 @@ LUA_API void lua_gettable (lua_State *L, int idx) {
 }
 
 
+/*
+ * 把 t[k] 值压入堆栈， 这里的 t 是指有效索引 index 指向的值。
+ * 在 Lua 中，这个函数可能触发对应 "index" 事件的元方法
+ */
 LUA_API void lua_getfield (lua_State *L, int idx, const char *k) {
   StkId t;
   TValue key;
@@ -583,6 +683,9 @@ LUA_API void lua_getfield (lua_State *L, int idx, const char *k) {
 }
 
 
+/*
+ * 类似于 lua_gettable， 但是作一次直接访问（不触发元方法）
+ */
 LUA_API void lua_rawget (lua_State *L, int idx) {
   StkId t;
   lua_lock(L);
@@ -593,6 +696,10 @@ LUA_API void lua_rawget (lua_State *L, int idx) {
 }
 
 
+/*
+ * 把 t[n] 的值压栈， 这里的 t 是指给定索引 index 处的一个值。
+ * 这是一个直接访问；就是说，它不会触发元方法 
+ */
 LUA_API void lua_rawgeti (lua_State *L, int idx, int n) {
   StkId o;
   lua_lock(L);
@@ -604,6 +711,12 @@ LUA_API void lua_rawgeti (lua_State *L, int idx, int n) {
 }
 
 
+/*
+ * 创建一个新的空 table 压入堆栈。
+ * 这个新 table 将被预分配 narr 个元素的数组空间 以及 nrec 个元素的非数组空间。
+ * 当你明确知道表中需要多少个元素时，预分配就非常有用。
+ * 如果你不知道，可以使用函数 lua_newtable
+ */
 LUA_API void lua_createtable (lua_State *L, int narray, int nrec) {
   lua_lock(L);
   luaC_checkGC(L);
@@ -613,6 +726,10 @@ LUA_API void lua_createtable (lua_State *L, int narray, int nrec) {
 }
 
 
+/*
+ * 把给定索引指向的值的元表压入堆栈。
+ * 如果索引无效，或是这个值没有元表， 函数将返回 0 并且不会向栈上压任何东西
+ */
 LUA_API int lua_getmetatable (lua_State *L, int objindex) {
   const TValue *obj;
   Table *mt = NULL;
@@ -642,6 +759,9 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
 }
 
 
+/*
+ * 把索引处值的环境表压入堆栈。
+ */
 LUA_API void lua_getfenv (lua_State *L, int idx) {
   StkId o;
   lua_lock(L);
@@ -671,6 +791,11 @@ LUA_API void lua_getfenv (lua_State *L, int idx) {
 */
 
 
+/*
+ * 作一个等价于 t[k] = v 的操作， 这里 t 是一个给定有效索引 index 处的值， v 指栈顶的值， 而 k 是栈顶之下的那个值。
+ *
+ * 这个函数会把键和值都从堆栈中弹出。 和在 Lua 中一样，这个函数可能触发 "newindex" 事件的元方法 
+ */
 LUA_API void lua_settable (lua_State *L, int idx) {
   StkId t;
   lua_lock(L);
@@ -683,6 +808,11 @@ LUA_API void lua_settable (lua_State *L, int idx) {
 }
 
 
+/*
+ * 做一个等价于 t[k] = v 的操作， 这里 t 是给出的有效索引 index 处的值， 而 v 是栈顶的那个值。
+ *
+ * 这个函数将把这个值弹出堆栈。 跟在 Lua 中一样，这个函数可能触发一个 "newindex" 事件的元方法
+ */
 LUA_API void lua_setfield (lua_State *L, int idx, const char *k) {
   StkId t;
   TValue key;
@@ -697,6 +827,9 @@ LUA_API void lua_setfield (lua_State *L, int idx, const char *k) {
 }
 
 
+/*
+ * 类似于 lua_settable， 但是是作一个直接赋值（不触发元方法）
+ */
 LUA_API void lua_rawset (lua_State *L, int idx) {
   StkId t;
   lua_lock(L);
@@ -710,6 +843,11 @@ LUA_API void lua_rawset (lua_State *L, int idx) {
 }
 
 
+/*
+ * 等价于 t[n] = v， 这里的 t 是指给定索引 index 处的一个值， 而 v 是栈顶的值。
+ *
+ * 函数将把这个值弹出栈。 赋值操作是直接的；就是说，不会触发元方法。
+ */
 LUA_API void lua_rawseti (lua_State *L, int idx, int n) {
   StkId o;
   lua_lock(L);
@@ -723,6 +861,9 @@ LUA_API void lua_rawseti (lua_State *L, int idx, int n) {
 }
 
 
+/*
+ * 把一个 table 弹出堆栈，并将其设为给定索引处的值的 metatable 
+ */
 LUA_API int lua_setmetatable (lua_State *L, int objindex) {
   TValue *obj;
   Table *mt;
@@ -760,6 +901,10 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
 }
 
 
+/*
+ * 从堆栈上弹出一个 table 并把它设为指定索引处值的新环境。
+ * 如果指定索引处的值即不是函数又不是线程或是 userdata ， lua_setfenv 会返回 0 ， 否则返回 1
+ */
 LUA_API int lua_setfenv (lua_State *L, int idx) {
   StkId o;
   int res = 1;
@@ -802,6 +947,15 @@ LUA_API int lua_setfenv (lua_State *L, int idx) {
      api_check(L, (nr) == LUA_MULTRET || (L->ci->top - L->top >= (nr) - (na)))
 	
 
+/*
+ * 调用一个函数
+ * 调用前，确保函数和参数都已经压入栈中。
+ * 函数明最先压栈，接着参数以正序依次进栈
+ *
+ * 函数调用前，会把函数名和参数出栈；函数调用后，回把返回值正序压栈，故最后一个返回值在栈顶
+ * @params    nargs    参数的个数
+ * @params    nresults 返回值的个数，这里写几，就把几个返回值压到栈中。如果值为LUA_MULTRET,就有多少个返回值，就压几个
+ */
 LUA_API void lua_call (lua_State *L, int nargs, int nresults) {
   StkId func;
   lua_lock(L);
@@ -888,6 +1042,11 @@ LUA_API int lua_cpcall (lua_State *L, lua_CFunction func, void *ud) {
 }
 
 
+/*
+ * 加载一个 Lua chunk 。
+ * 如果没有错误， lua_load 把一个编译好的 chunk 作为一个 Lua 函数压入堆栈。
+ * 否则，压入出错信息
+ */
 LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
                       const char *chunkname) {
   ZIO z;
@@ -916,15 +1075,32 @@ LUA_API int lua_dump (lua_State *L, lua_Writer writer, void *data) {
 }
 
 
+/*
+ * 返回线程L的状态
+ */
 LUA_API int  lua_status (lua_State *L) {
   return L->status;
 }
 
 
 /*
-** Garbage-collection function
-*/
-
+ * 控制垃圾收集器。
+ *
+ * 这个函数根据其参数 what 发起几种不同的任务：
+ *
+ * LUA_GCSTOP: 停止垃圾收集器。
+ * LUA_GCRESTART: 重启垃圾收集器。
+ * LUA_GCCOLLECT: 发起一次完整的垃圾收集循环。
+ * LUA_GCCOUNT: 返回 Lua 使用的内存总量（以 K 字节为单位）。
+ * LUA_GCCOUNTB: 返回当前内存使用量除以 1024 的余数。
+ * LUA_GCSTEP: 发起一步增量垃圾收集。
+ *              步数由 data 控制（越大的值意味着越多步）， 而其具体含义（具体数字表示了多少）并未标准化。
+ *              如果你想控制这个步数，必须实验性的测试 data 的值。
+ *              如果这一步结束了一个垃圾收集周期，返回返回 1 。
+ * LUA_GCSETPAUSE: 把 data/100 设置为 garbage-collector pause 的新值（参见 §2.10）。 函数返回以前的值。
+ * LUA_GCSETSTEPMUL: 把 arg/100 设置成 step multiplier （参见 §2.10）。 函数返回以前的值。
+ *
+ */
 LUA_API int lua_gc (lua_State *L, int what, int data) {
   int res = 0;
   global_State *g;
@@ -989,7 +1165,11 @@ LUA_API int lua_gc (lua_State *L, int what, int data) {
 ** miscellaneous functions
 */
 
-
+/*
+ * 产生一个 Lua 错误。
+ * 错误信息（实际上可以是任何类型的 Lua 值）必须被置入栈顶。
+ * 这个函数会做一次长跳转，因此它不会再返回
+ */
 LUA_API int lua_error (lua_State *L) {
   lua_lock(L);
   api_checknelems(L, 1);
@@ -1015,7 +1195,12 @@ LUA_API int lua_next (lua_State *L, int idx) {
   return more;
 }
 
-
+/*
+ * 连接栈顶的 n 个值， 然后将这些值出栈，并把结果放在栈顶。 
+ * 如果 n 为 1 ，结果就是一个字符串放在栈上（即，函数什么都不做）； 
+ * 如果 n 为 0 ，结果是一个空串
+ * 实际就是字符串链接
+ */
 LUA_API void lua_concat (lua_State *L, int n) {
   lua_lock(L);
   api_checknelems(L, n);
@@ -1051,6 +1236,10 @@ LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud) {
 }
 
 
+/*
+ * 这个函数分配分配一块指定大小的内存块，
+ * 把内存块地址作为一个完整的 userdata 压入堆栈，并返回这个地址。
+ */
 LUA_API void *lua_newuserdata (lua_State *L, size_t size) {
   Udata *u;
   lua_lock(L);

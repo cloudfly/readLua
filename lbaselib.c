@@ -444,6 +444,9 @@ static int luaB_newproxy (lua_State *L) {
 }
 
 
+/*
+ * 下面就是可在Lua中直接调用的函数表
+ */
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},

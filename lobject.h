@@ -40,11 +40,11 @@
 /*
 ** Common header in struct form
 */
-typedef struct GCheader {
+typedef struct GCheader {       // 这个header的存在就是为了实现GC算法的
   // CommonHeader
-  GCObject *next; 
-  lu_byte tt; 
-  lu_byte marked;
+  GCObject *next;   //下一个gc变量
+  lu_byte tt;       //变量类型
+  lu_byte marked;   //变量标志，标记着这个变量的使用情况
 
 } GCheader;
 
@@ -54,10 +54,10 @@ typedef struct GCheader {
 * 所有 Lua 变量类型的定义
 */
 typedef union {
-  GCObject *gc;
-  void *p;
-  lua_Number n;
-  int b;
+  GCObject *gc;     //可回收的类型，string table function等,在 union GCObject 中有定义,下面的三个都是不能被回收的
+  void *p;          // light userdata 是不会被gc的
+  lua_Number n;     // double 类型
+  int b;            // boolean 类型
 } Value;
 
 
@@ -373,6 +373,10 @@ typedef struct Node {
 } Node;
 
 
+/*
+ * Lua 的表里，数组和表都用table来表示，如果一个value没有key ，就直接到array(下面的数组部分)中，如果有key ，就放到node(下面的散列表部分)中存储
+ * 所以，table.getn函数，只能返回array数组的大小,在node中的都忽略不计了
+ */
 typedef struct Table {
   GCObject *next;
   lu_byte tt;
@@ -380,8 +384,8 @@ typedef struct Table {
   lu_byte flags;  /* 1<<p means tagmethod(p) is not present */ 
   lu_byte lsizenode;  /* log2 of size of `node' array */
   struct Table *metatable;
-  TValue *array;  /* array part */
-  Node *node;
+  TValue *array;  /* 数组部分 */
+  Node *node;       /*散列表部分*/
   Node *lastfree;  /* any free position is before this position */
   GCObject *gclist;
   int sizearray;  /* size of `array' array */

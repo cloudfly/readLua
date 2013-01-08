@@ -47,20 +47,29 @@ void luaS_resize (lua_State *L, int newsize) {
 }
 
 
+/*
+ * 新建一个字符串，放到hash表中
+ */
 static TString *newlstr (lua_State *L, const char *str, size_t l,
                                        unsigned int h) {
   TString *ts;
   stringtable *tb;
   if (l+1 > (MAX_SIZET - sizeof(TString))/sizeof(char))
     luaM_toobig(L);
+
+  /*
+   * 为字符串申请空间，一个字符串需要一个TString + 字符串本身的空间
+   */
   ts = cast(TString *, luaM_malloc(L, (l+1)*sizeof(char)+sizeof(TString)));
-  ts->tsv.len = l;
+  ts->tsv.len = l;      //字符串长度
   ts->tsv.hash = h;
   ts->tsv.marked = luaC_white(G(L));
   ts->tsv.tt = LUA_TSTRING;
   ts->tsv.reserved = 0;
   memcpy(ts+1, str, l*sizeof(char));
   ((char *)(ts+1))[l] = '\0';  /* ending 0 */
+
+  // 去到全局的 stringtable
   tb = &G(L)->strt;
   h = lmod(h, tb->size);
   ts->tsv.next = tb->hash[h];  /* chain new entry */

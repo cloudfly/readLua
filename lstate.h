@@ -44,10 +44,19 @@ struct lua_longjmp {
 
 
 
+/*
+ * 专门用来存储字符串的 hash table
+ *
+ * luaS_newlstr 新建字符串的时候，会先hash出来一个值，然后到 stringtable.hash里找，找到就返回ts，
+ *
+ * 找不到就调用newlstr创建一个放进去
+ *
+ * 所以具体怎么hash的看newlstr函数
+ */
 typedef struct stringtable {
   GCObject **hash;
-  lu_int32 nuse;  /*number of elements*/
-  int size;
+  lu_int32 nuse;  /*hash 表中 string 的 个数 */
+  int size;         // hash 表的大小
 } stringtable;
 
 
@@ -110,13 +119,13 @@ typedef struct global_State {
 struct lua_State {
   CommonHeader;
   lu_byte status;
-  StkId top;  /* first free slot in the stack */
-  StkId base;  /* base of current function */
+  StkId top;  /* 栈中第一个空的位置*/
+  StkId base;  /* 当前函数的地址，*/
   global_State *l_G;
   CallInfo *ci;  /* 当前函数的信息 */
   const Instruction *savedpc;  /* `savedpc' of current function */
-  StkId stack_last;  /* last free slot in the stack */
-  StkId stack;  /* stack base */
+  StkId stack_last;  /* 栈的最后一个空位置， */
+  StkId stack;  /* 栈的基地址*/
   CallInfo *end_ci;  /* points after end of ci array*/
   CallInfo *base_ci;  /* array of CallInfo's */
   int stacksize;
