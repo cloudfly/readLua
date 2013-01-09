@@ -395,13 +395,30 @@ static Node *getfreepos (Table *t) {
 ** position or not: if it is not, move colliding node to an empty place and 
 ** put new key in its main position; otherwise (colliding node is in its main 
 ** position), new key goes to an empty position. 
+
+
+hash table  node 的数组
+ _____________________________________________________________________________________________________________________________________________________ 
+|__1__|__2__|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|
+
+lastfree 为node指针，指向 hash table 最后一个空位置，也就是说，lastfree 右侧的所有位置都是有元素存在的
+
+如果冲突了，就lastfree给出一个空位置，把元素填进去，原来的位置指针指过来，形成hash值一样的所有key的链表
+
+如果来了hash值，发现它要去的位置被 A 占了，而这个A也是靠lastfree分给他的；就让lastfree再给它重分配位置，让A到新的地方去。自己进来
+
+如果发现占它位置的A 和自己是属于hash冲突的，就自己再让lastfree分配个位置，让A 的next指针指向这个新位置，就是把自己的新位置加到链表中
+
 */
 static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
   Node *mp = mainposition(t, key);
+
+  /*如果这个位置不空，或位置放着一个废Node*/
   if (!ttisnil(gval(mp)) || mp == dummynode) {
     Node *othern;
-    Node *n = getfreepos(t);  /* get a free place */
-    if (n == NULL) {  /* cannot find a free place? */
+    Node *n = getfreepos(t);  /* 弄到一个位置, 从hash表的最后一个空位置开始扫描，找空位置*/
+
+    if (n == NULL) {  /* 整个hash表里都没空位置了，重新hash一遍 */
       rehash(L, t, key);  /* grow table */
       return luaH_set(L, t, key);  /* re-insert key into grown table */
     }
@@ -431,11 +448,15 @@ static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
 
 /*
 ** search function for integers
+根据 number key 返回 t[key]
 */
 const TValue *luaH_getnum (Table *t, int key) {
   /* (1 <= key && key <= t->sizearray) */
+   // 判断 key 是否超出范围
   if (cast(unsigned int, key-1) < cast(unsigned int, t->sizearray))
     return &t->array[key-1];
+
+  // 超出范围了，就到node链表中找
   else {
     lua_Number nk = cast_num(key);
     Node *n = hashnum(t, nk);
@@ -451,8 +472,11 @@ const TValue *luaH_getnum (Table *t, int key) {
 
 /*
 ** search function for strings
+ * 根据 string key 返回 t[key]
 */
 const TValue *luaH_getstr (Table *t, TString *key) {
+
+    // hash 计算的到链表 , 然后遍历
   Node *n = hashstr(t, key);
   do {  /* check whether `key' is somewhere in the chain */
     if (ttisstring(gkey(n)) && rawtsvalue(gkey(n)) == key)
@@ -464,12 +488,18 @@ const TValue *luaH_getstr (Table *t, TString *key) {
 
 
 /*
-** main search function
-*/
+ * main search function
+ * 在表t中查找key对应的值
+ */
 const TValue *luaH_get (Table *t, const TValue *key) {
+
   switch (ttype(key)) {
+      // key 是nil ,直接返回nil
     case LUA_TNIL: return luaO_nilobject;
+
+      // key 是一个 string, 会在Node中遍历
     case LUA_TSTRING: return luaH_getstr(t, rawtsvalue(key));
+      // key 是一个 number,如果number 在 数组长度范围内，就返回，如果没有还是到node中找
     case LUA_TNUMBER: {
       int k;
       lua_Number n = nvalue(key);
@@ -491,12 +521,18 @@ const TValue *luaH_get (Table *t, const TValue *key) {
 }
 
 
+/*
+ * 给table指定的key赋值
+ */
 TValue *luaH_set (lua_State *L, Table *t, const TValue *key) {
+
+    /*先看key是不是存在，也就是get(key)返回的不是nil*/
   const TValue *p = luaH_get(t, key);
   t->flags = 0;
   if (p != luaO_nilobject)
     return cast(TValue *, p);
   else {
+      /*否则就调用newkey 创建一个新key*/
     if (ttisnil(key)) luaG_runerror(L, "table index is nil");
     else if (ttisnumber(key) && luai_numisnan(nvalue(key)))
       luaG_runerror(L, "table index is NaN");

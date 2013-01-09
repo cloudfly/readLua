@@ -64,46 +64,46 @@ StkId是一个Tvalue类型的指针。i
 /*
  * 把索引值翻译成实际的地址，返回TValue
  */
-static TValue *index2adr (lua_State *L, int idx) {                          如图:
-  if (idx > 0) {                                                             ---------
-    TValue *o = L->base + (idx - 1);                                        |         | <---- stack_last 最后一个空位置
-    api_check(L, idx <= L->ci->top - L->base);                               ---------
-    if (o >= L->top) return cast(TValue *, luaO_nilobject);                 |         |
-    else return o;                                                           ---------
-  }                                                                         |         |
-  else if (idx > LUA_REGISTRYINDEX) {                                        ---------
-    api_check(L, idx != 0 && -idx <= L->top - L->base);                     |         |
-    return L->top + idx;                                                     ---------
-  }                                                                         |         |
-  else switch (idx) {  /* pseudo-indices */                                  ---------
-    case LUA_REGISTRYINDEX: return registry(L);                             |         |
-    case LUA_ENVIRONINDEX: {                                                 ---------
-      Closure *func = curr_func(L);                                         |         |
-      sethvalue(L, &L->env, func->c.env);                                    ---------
-      return &L->env;                                                       |         | <---- top   第一个空位置        
-    }                                                                        ---------
-    case LUA_GLOBALSINDEX: return gt(L);                                    |  used   | <---- index 为 -1 时所取的位置       index2adr 中 idx 参数为正数时，位置为 base + idx - 1
-    default: {                                                               ---------
-      Closure *func = curr_func(L);                                         |  used   |                                      为负数时，就从上往下找，实际位置为 top + idx
-      idx = LUA_GLOBALSINDEX - idx;                                          ---------
-      return (idx <= func->c.nupvalues)                                     |  used   |                                      idx 为 0 时表示无效
-                ? &func->c.upvalue[idx-1]                                    ---------
-                : cast(TValue *, luaO_nilobject);                           |  used   | <---- index 为 2 时所取的位置
-    }                                                                        ---------
-  }                                                                         |  used   | <---- base  当前函数的位置. 实际就是index 为 1 的地方
-}                                                                            ---------
-                                                                            |  used   |
-                                                                             ---------
-                                                                            |  used   |
-                                                                             ---------
-                                                                            |  used   |
-                                                                             ---------
-                                                                            |  used   |
-                                                                             ---------
-                                                                            |  used   |
-                                                                             ---------
-                                                                            |  used   | <---- stack 整个栈的基地址
-                                                                             ---------
+static TValue *index2adr (lua_State *L, int idx) {                      //   如图:
+  if (idx > 0) {                                                        //    ---------
+    TValue *o = L->base + (idx - 1);                                    //   |         | <---- stack_last 最后一个空位置
+    api_check(L, idx <= L->ci->top - L->base);                          //    ---------
+    if (o >= L->top) return cast(TValue *, luaO_nilobject);             //   |         |
+    else return o;                                                      //    ---------
+  }                                                                     //   |         |
+  else if (idx > LUA_REGISTRYINDEX) {                                   //    ---------
+    api_check(L, idx != 0 && -idx <= L->top - L->base);                 //   |         |
+    return L->top + idx;                                                //    ---------
+  }                                                                     //   |         |
+  else switch (idx) {  /* pseudo-indices */                             //    ---------
+    case LUA_REGISTRYINDEX: return registry(L);                         //   |         |
+    case LUA_ENVIRONINDEX: {                                            //    ---------
+      Closure *func = curr_func(L);                                     //   |         |
+      sethvalue(L, &L->env, func->c.env);                               //    ---------
+      return &L->env;                                                   //   |         | <---- top   第一个空位置        
+    }                                                                   //    ---------
+    case LUA_GLOBALSINDEX: return gt(L);                                //   |  used   | <---- index 为 -1 时所取的位置       index2adr 中 idx 参数为正数时，位置为 base + idx - 1
+    default: {                                                          //    ---------
+      Closure *func = curr_func(L);                                     //   |  used   |                                      为负数时，就从上往下找，实际位置为 top + idx
+      idx = LUA_GLOBALSINDEX - idx;                                     //    ---------
+      return (idx <= func->c.nupvalues)                                 //   |  used   |                                      idx 为 0 时表示无效
+                ? &func->c.upvalue[idx-1]                               //    ---------
+                : cast(TValue *, luaO_nilobject);                       //   |  used   | <---- index 为 2 时所取的位置
+    }                                                                   //    ---------
+  }                                                                     //   |  used   | <---- base  当前函数的位置. 实际就是index 为 1 的地方
+}                                                                       //    ---------
+                                                                        //   |  used   |
+                                                                        //    ---------
+                                                                        //   |  used   |
+                                                                        //    ---------
+                                                                        //   |  used   |
+                                                                        //    ---------
+                                                                        //   |  used   |
+                                                                        //    ---------
+                                                                        //   |  used   |
+                                                                        //    ---------
+                                                                        //   |  used   | <---- stack 整个栈的基地址
+                                                                        //    ---------
 static Table *getcurrenv (lua_State *L) {                                   
   if (L->ci == L->base_ci)  /* no enclosing function? */                    
     return hvalue(gt(L));  /* use global table as environment */            
