@@ -107,7 +107,7 @@ typedef struct global_State {
   lua_CFunction panic;  /* to be called in unprotected errors */
   TValue l_registry;
   struct lua_State *mainthread;
-  UpVal uvhead;  /* head of double-linked list of all open upvalues */
+  UpVal uvhead;  /* 整个lua虚拟机中，所有栈(一个协程一个栈)的upvalues链表的表头*/
   struct Table *mt[NUM_TAGS];  /* metatables for basic types */
   TString *tmname[TM_N];  /* array with tag-method names */
 } global_State;
@@ -139,7 +139,7 @@ struct lua_State {
   lua_Hook hook;
   TValue l_gt;  /* table of globals */
   TValue env;  /* temporary place for environments */
-  GCObject *openupval;  /* list of open upvalues in this stack */
+  GCObject *openupval;  /* 当前栈上处于打开状态的所有upvalues的链表 */
   GCObject *gclist;
   struct lua_longjmp *errorJmp;  /* current error recover point */
   ptrdiff_t errfunc;  /* current error handling function (stack index) */

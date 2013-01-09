@@ -296,7 +296,7 @@ typedef struct UpVal {
   lu_byte tt;
   lu_byte marked;
 
-  TValue *v;  /* points to stack or to its own value */
+  TValue *v;  /* 指向自己在栈中的地址，或本身 */
   union {
     TValue value;  /* the value (when closed) */
     struct {  /* 双向链表 double linked list (when open) */

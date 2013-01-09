@@ -445,6 +445,8 @@ static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
   return gval(mp);
 }
 
+/* HASH 表的长度 总是 2 的 N 次幂, 最大为 2 的 26 次幂*/
+
 
 /*
 ** search function for integers
