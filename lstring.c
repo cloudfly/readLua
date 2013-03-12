@@ -1,5 +1,5 @@
 /*
-** $Id: lstring.c,v 2.8.1.1 2007/12/27 13:02:25 roberto Exp $
+** $Id: lstring.c,v 2.8 2005/12/22 16:19:56 roberto Exp $
 ** String table (keeps all strings handled by Lua)
 ** See Copyright Notice in lua.h
 */
@@ -46,7 +46,6 @@ void luaS_resize (lua_State *L, int newsize) {
   tb->hash = newhash;
 }
 
-
 /*
  * 新建一个字符串，放到hash表中
  */
@@ -61,15 +60,14 @@ static TString *newlstr (lua_State *L, const char *str, size_t l,
    * 为字符串申请空间，一个字符串需要一个TString + 字符串本身的空间
    */
   ts = cast(TString *, luaM_malloc(L, (l+1)*sizeof(char)+sizeof(TString)));
-  ts->tsv.len = l;      //字符串长度
+  ts->tsv.len = l;  /*字符串长度*/
   ts->tsv.hash = h;
   ts->tsv.marked = luaC_white(G(L));
   ts->tsv.tt = LUA_TSTRING;
   ts->tsv.reserved = 0;
   memcpy(ts+1, str, l*sizeof(char));
   ((char *)(ts+1))[l] = '\0';  /* ending 0 */
-
-  // 去到全局的 stringtable
+  /* 去到全局的stringtable*/
   tb = &G(L)->strt;
   h = lmod(h, tb->size);
   ts->tsv.next = tb->hash[h];  /* chain new entry */

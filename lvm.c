@@ -1,8 +1,9 @@
 /*
-** $Id: lvm.c,v 2.63.1.3 2007/12/28 15:32:23 roberto Exp $
+** $Id: lvm.c,v 2.62 2006/01/23 19:51:43 roberto Exp $
 ** Lua virtual machine
 ** See Copyright Notice in lua.h
 */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,9 +61,11 @@ static void traceexec (lua_State *L, const Instruction *pc) {
   lu_byte mask = L->hookmask;
   const Instruction *oldpc = L->savedpc;
   L->savedpc = pc;
-  if ((mask & LUA_MASKCOUNT) && L->hookcount == 0) {
-    resethookcount(L);
-    luaD_callhook(L, LUA_HOOKCOUNT, -1);
+  if (mask > LUA_MASKLINE) {  /* instruction-hook set? */
+    if (L->hookcount == 0) {
+      resethookcount(L);
+      luaD_callhook(L, LUA_HOOKCOUNT, -1);
+    }
   }
   if (mask & LUA_MASKLINE) {
     Proto *p = ci_func(L->ci)->l.p;
@@ -162,7 +165,7 @@ static int call_binTM (lua_State *L, const TValue *p1, const TValue *p2,
   const TValue *tm = luaT_gettmbyobj(L, p1, event);  /* try first operand */
   if (ttisnil(tm))
     tm = luaT_gettmbyobj(L, p2, event);  /* try second operand */
-  if (ttisnil(tm)) return 0;
+  if (!ttisfunction(tm)) return 0;
   callTMres(L, res, tm, p1, p2);
   return 1;
 }
@@ -278,12 +281,10 @@ void luaV_concat (lua_State *L, int total, int last) {
   do {
     StkId top = L->base + last + 1;
     int n = 2;  /* number of elements handled in this pass (at least 2) */
-    if (!(ttisstring(top-2) || ttisnumber(top-2)) || !tostring(L, top-1)) {
+    if (!tostring(L, top-2) || !tostring(L, top-1)) {
       if (!call_binTM(L, top-2, top-1, top-2, TM_CONCAT))
         luaG_concaterror(L, top-2, top-1);
-    } else if (tsvalue(top-1)->len == 0)  /* second op is empty? */
-      (void)tostring(L, top - 2);  /* result is first op (as string) */
-    else {
+    } else if (tsvalue(top-1)->len > 0) {  /* if len=0, do nothing */
       /* at least two string values; get as many as possible */
       size_t tl = tsvalue(top-1)->len;
       char *buffer;
@@ -370,16 +371,15 @@ static void Arith (lua_State *L, StkId ra, const TValue *rb,
 
 
 void luaV_execute (lua_State *L, int nexeccalls) {
-  LClosure *cl; // 闭包
-  StkId base;   // TValue
-  TValue *k;    // TValue
-  const Instruction *pc;    // unsigned int
+  LClosure *cl; /*闭包*/
+  StkId base;   /*TValue*/
+  TValue *k;    /*TValue*/
+  const Instruction *pc;    /* unsigned int */
  reentry:  /* entry point */
-  lua_assert(isLua(L->ci)); //判断ci 是不是个 Lua 函数
   pc = L->savedpc;
-  cl = &clvalue(L->ci->func)->l;    // Closure->LClosure
-  base = L->base;       //lua_State->StkId
-  k = cl->p->k;         //Proto->TValue
+  cl = &clvalue(L->ci->func)->l; /* Closure->LClosure */
+  base = L->base;               /* lua_State->StkId */
+  k = cl->p->k;                 /*Proto->TValue*/
   /* main loop of interpreter */
   for (;;) {
     const Instruction i = *pc++;

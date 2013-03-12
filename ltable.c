@@ -1,5 +1,5 @@
 /*
-** $Id: ltable.c,v 2.32.1.2 2007/12/28 15:32:23 roberto Exp $
+** $Id: ltable.c,v 2.32 2006/01/18 11:49:02 roberto Exp $
 ** Lua tables (hash)
 ** See Copyright Notice in lua.h
 */
@@ -84,8 +84,8 @@ static const Node dummynode_ = {
 static Node *hashnum (const Table *t, lua_Number n) {
   unsigned int a[numints];
   int i;
-  if (luai_numeq(n, 0))  /* avoid problems with -0 */
-    return gnode(t, 0);
+  n += 1;  /* normalize number (avoid -0) */
+  lua_assert(sizeof(a) <= sizeof(n));
   memcpy(a, &n, sizeof(a));
   for (i = 1; i < numints; i++) a[0] += a[i];
   return hashmod(t, a[0]);
@@ -395,9 +395,9 @@ static Node *getfreepos (Table *t) {
 ** position or not: if it is not, move colliding node to an empty place and 
 ** put new key in its main position; otherwise (colliding node is in its main 
 ** position), new key goes to an empty position. 
+*/
 
-
-hash table  node 的数组
+/*hash table  node 的数组
  _____________________________________________________________________________________________________________________________________________________ 
 |__1__|__2__|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|_____|
 
@@ -412,13 +412,11 @@ lastfree 为node指针，指向 hash table 最后一个空位置，也就是说�
 */
 static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
   Node *mp = mainposition(t, key);
-
   /*如果这个位置不空，或位置放着一个废Node*/
   if (!ttisnil(gval(mp)) || mp == dummynode) {
     Node *othern;
-    Node *n = getfreepos(t);  /* 弄到一个位置, 从hash表的最后一个空位置开始扫描，找空位置*/
-
-    if (n == NULL) {  /* 整个hash表里都没空位置了，重新hash一遍 */
+    Node *n = getfreepos(t);  /* get a free place , 弄到一个位置, 从hash表的最后一个空位置开始扫描，找空位置*/
+    if (n == NULL) {  /* cannot find a free place?整个hash表里都没空位置了，重新hash一遍 */
       rehash(L, t, key);  /* grow table */
       return luaH_set(L, t, key);  /* re-insert key into grown table */
     }
@@ -444,9 +442,7 @@ static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
   lua_assert(ttisnil(gval(mp)));
   return gval(mp);
 }
-
 /* HASH 表的长度 总是 2 的 N 次幂, 最大为 2 的 26 次幂*/
-
 
 /*
 ** search function for integers
@@ -454,11 +450,10 @@ static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
 */
 const TValue *luaH_getnum (Table *t, int key) {
   /* (1 <= key && key <= t->sizearray) */
-   // 判断 key 是否超出范围
+    /*判断 key 是否超出范围*/
   if (cast(unsigned int, key-1) < cast(unsigned int, t->sizearray))
     return &t->array[key-1];
-
-  // 超出范围了，就到node链表中找
+  /*超出范围了，就到node链表中找*/
   else {
     lua_Number nk = cast_num(key);
     Node *n = hashnum(t, nk);
@@ -472,13 +467,12 @@ const TValue *luaH_getnum (Table *t, int key) {
 }
 
 
-/*
+/* 
 ** search function for strings
- * 根据 string key 返回 t[key]
+根据 string key 返回 t[key
 */
 const TValue *luaH_getstr (Table *t, TString *key) {
-
-    // hash 计算的到链表 , 然后遍历
+    /*hash 计算的到链表 , 然后遍历*/
   Node *n = hashstr(t, key);
   do {  /* check whether `key' is somewhere in the chain */
     if (ttisstring(gkey(n)) && rawtsvalue(gkey(n)) == key)
@@ -490,18 +484,16 @@ const TValue *luaH_getstr (Table *t, TString *key) {
 
 
 /*
- * main search function
- * 在表t中查找key对应的值
- */
+** main search function
+在表t中查找key对应的值
+*/
 const TValue *luaH_get (Table *t, const TValue *key) {
-
   switch (ttype(key)) {
-      // key 是nil ,直接返回nil
+      /*key 是nil ,直接返回nil*/
     case LUA_TNIL: return luaO_nilobject;
-
-      // key 是一个 string, 会在Node中遍历
+       /*key 是一个 string, 会在Node中遍历*/
     case LUA_TSTRING: return luaH_getstr(t, rawtsvalue(key));
-      // key 是一个 number,如果number 在 数组长度范围内，就返回，如果没有还是到node中找
+      /*key 是一个 number,如果number 在 数组长度范围内，就返回，如果没有还是到node中找*/
     case LUA_TNUMBER: {
       int k;
       lua_Number n = nvalue(key);
@@ -522,12 +514,10 @@ const TValue *luaH_get (Table *t, const TValue *key) {
   }
 }
 
-
 /*
  * 给table指定的key赋值
  */
 TValue *luaH_set (lua_State *L, Table *t, const TValue *key) {
-
     /*先看key是不是存在，也就是get(key)返回的不是nil*/
   const TValue *p = luaH_get(t, key);
   t->flags = 0;

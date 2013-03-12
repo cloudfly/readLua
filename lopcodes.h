@@ -1,5 +1,5 @@
 /*
-** $Id: lopcodes.h,v 1.125.1.1 2007/12/27 13:02:25 roberto Exp $
+** $Id: lopcodes.h,v 1.124 2005/12/02 18:42:08 roberto Exp $
 ** Opcodes for Lua virtual machine
 ** See Copyright Notice in lua.h
 */
@@ -27,6 +27,7 @@
   unsigned argument.
 ===========================================================================*/
 
+ 
 /*=======================================================================
  *
  * 指令都是非符号整数
@@ -40,21 +41,23 @@
  *  'sBx' : Bx 的有符号型
  *
  =======================================================================*/
-
+ 
 
 /*
  * 基本指令的定义
  */
+
+
 enum OpMode {iABC, iABx, iAsBx};  /* basic instruction format */
 
 
 /*
- * size and position of opcode arguments.
+** size and position of opcode arguments.
  * 每种 opcode 参数的位数 和 所在位置
  */
 #define SIZE_C		9
 #define SIZE_B		9
-#define SIZE_Bx		18
+#define SIZE_Bx		(SIZE_C + SIZE_B)
 #define SIZE_A		8
 
 #define SIZE_OP		6
@@ -215,8 +218,8 @@ OP_FORLOOP,/*	A sBx	R(A)+=R(A+2);
 			if R(A) <?= R(A+1) then { pc+=sBx; R(A+3)=R(A) }*/
 OP_FORPREP,/*	A sBx	R(A)-=R(A+2); pc+=sBx				*/
 
-OP_TFORLOOP,/*	A C	R(A+3), ... ,R(A+2+C) := R(A)(R(A+1), R(A+2)); 
-                        if R(A+3) ~= nil then R(A+2)=R(A+3) else pc++	*/ 
+OP_TFORLOOP,/*	A C	R(A+3), ... ,R(A+3+C) := R(A)(R(A+1), R(A+2)); 
+                        if R(A+3) ~= nil then { pc++; R(A+2)=R(A+3); }	*/ 
 OP_SETLIST,/*	A B C	R(A)[(C-1)*FPF+i] := R(A+i), 1 <= i <= B	*/
 
 OP_CLOSE,/*	A 	close all variables in the stack up to (>=) R(A)*/

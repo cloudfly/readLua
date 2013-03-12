@@ -1,5 +1,5 @@
 /*
-** $Id: lstate.h,v 2.24.1.2 2008/01/03 15:20:39 roberto Exp $
+** $Id: lstate.h,v 2.24 2006/02/06 18:27:59 roberto Exp $
 ** Global State
 ** See Copyright Notice in lua.h
 */
@@ -17,31 +17,22 @@
 
 struct lua_longjmp;  /* defined in ldo.c */
 
-/* //chain list of long jump buffers 
-struct lua_longjmp {
-  struct lua_longjmp *previous;
-  luai_jmpbuf b;
-  volatile int status;   //error code 
-};
-*/
-
-
 
 /* table of globals */
-/* 全局的表 */
 #define gt(L)	(&L->l_gt)
 
 /* registry */
 #define registry(L)	(&G(L)->l_registry)
 
 
-/* extra stack space to handle TM calls and some other extras 
- *  分配栈的大小
- * */
-#define EXTRA_STACK         5
-#define BASIC_CI_SIZE       8
-#define BASIC_STACK_SIZE    40
+/* extra stack space to handle TM calls and some other extras */
+/* 分配栈的大小*/
+#define EXTRA_STACK   5
 
+
+#define BASIC_CI_SIZE           8
+
+#define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
 
 
 /*
@@ -55,14 +46,14 @@ struct lua_longjmp {
  */
 typedef struct stringtable {
   GCObject **hash;
-  lu_int32 nuse;  /*hash 表中 string 的 个数 */
-  int size;         // hash 表的大小
+  lu_int32 nuse;  /* number of elements. hash 表中string的个数*/
+  int size;  /*hash表的大小*/
 } stringtable;
 
 
 /*
-* informations about a call
-* 关于调用的信息
+** informations about a call
++* 关于调用的信息
 */
 typedef struct CallInfo {
   StkId base;  /* base for this function */
@@ -107,7 +98,7 @@ typedef struct global_State {
   lua_CFunction panic;  /* to be called in unprotected errors */
   TValue l_registry;
   struct lua_State *mainthread;
-  UpVal uvhead;  /* 整个lua虚拟机中，所有栈(一个协程一个栈)的upvalues链表的表头*/
+  UpVal uvhead;  /*整个lua虚拟机中，所有栈(一个协程一个栈)的upvalues链表的表头 head of double-linked list of all open upvalues */
   struct Table *mt[NUM_TAGS];  /* metatables for basic types */
   TString *tmname[TM_N];  /* array with tag-method names */
 } global_State;
@@ -119,19 +110,18 @@ typedef struct global_State {
 struct lua_State {
   CommonHeader;
   lu_byte status;
-  StkId top;  /* 栈中第一个空的位置*/
-  StkId base;  /* 当前函数的地址，*/
+  StkId top;  /* first free slot in the stack, 栈中第一个空位置 */
+  StkId base;  /* base of current function, 当前函数地址*/
   global_State *l_G;
-  CallInfo *ci;  /* 当前函数的信息 */
+  CallInfo *ci;  /* call info for current function 当前函数信息*/
   const Instruction *savedpc;  /* `savedpc' of current function */
-  StkId stack_last;  /* 栈的最后一个空位置， */
-  StkId stack;  /* 栈的基地址*/
+  StkId stack_last;  /* 栈的最后一个空位置,last free slot in the stack */
+  StkId stack;  /* 栈的基地址stack base */
   CallInfo *end_ci;  /* points after end of ci array*/
   CallInfo *base_ci;  /* array of CallInfo's */
   int stacksize;
   int size_ci;  /* size of array `base_ci' */
   unsigned short nCcalls;  /* number of nested C calls */
-  unsigned short baseCcalls;  /* nested C calls when resuming coroutine */
   lu_byte hookmask;
   lu_byte allowhook;
   int basehookcount;
@@ -139,7 +129,7 @@ struct lua_State {
   lua_Hook hook;
   TValue l_gt;  /* table of globals */
   TValue env;  /* temporary place for environments */
-  GCObject *openupval;  /* 当前栈上处于打开状态的所有upvalues的链表 */
+  GCObject *openupval;  /* 当前栈上处于打开状态的所有upvalues的链表 list of open upvalues in this stack */
   GCObject *gclist;
   struct lua_longjmp *errorJmp;  /* current error recover point */
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
@@ -150,10 +140,10 @@ struct lua_State {
 
 
 /*
-* Union of all collectable objects
-* 所有可回收对象的合集
+** Union of all collectable objects
+所有可回收对象的合集
 */
-typedef union GCObject {
+union GCObject {
   GCheader gch;
   union TString ts;
   union Udata u;
@@ -162,7 +152,7 @@ typedef union GCObject {
   struct Proto p;
   struct UpVal uv;
   struct lua_State th;  /* thread */
-} GCObject;
+};
 
 
 /* macros to convert a GCObject into a specific value */
@@ -170,6 +160,7 @@ typedef union GCObject {
  * 宏
  * 把 GCObject 转为指定的类型值
  */
+
 #define rawgco2ts(o)	check_exp((o)->gch.tt == LUA_TSTRING, &((o)->ts))
 #define gco2ts(o)	(&rawgco2ts(o)->tsv)
 #define rawgco2u(o)	check_exp((o)->gch.tt == LUA_TUSERDATA, &((o)->u))
@@ -186,6 +177,7 @@ typedef union GCObject {
 /* 宏
  * 把任意类型的变量转成GCObject
  */
+
 #define obj2gco(v)	(cast(GCObject *, (v)))
 
 
