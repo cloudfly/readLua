@@ -387,6 +387,9 @@ typedef struct Table {
 
 LUAI_DATA const TValue luaO_nilobject_;
 
+/*
+ * log2(x)向上取整,这里必须满足 x > 0
+ */
 #define ceillog2(x)	(luaO_log2((x)-1) + 1)
 
 LUAI_FUNC int luaO_log2 (unsigned int x);
