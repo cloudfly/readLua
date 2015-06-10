@@ -27,6 +27,8 @@
 
 #define luaM_malloc(L,t)	luaM_realloc_(L, NULL, 0, (t))
 #define luaM_new(L,t)		cast(t *, luaM_malloc(L, sizeof(t)))
+
+// luaM_newvector实际就是申请 n * sizeof(t)大小的内存。只不过申请时，需要修改状态机L中的内存总数值
 #define luaM_newvector(L,n,t) \
 		cast(t *, luaM_reallocv(L, NULL, 0, n, sizeof(t)))
 

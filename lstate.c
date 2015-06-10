@@ -142,43 +142,62 @@ void luaE_freethread (lua_State *L, lua_State *L1) {
 
 LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud) {
   int i;
-  lua_State *L;
-  global_State *g;
-  void *l = (*f)(ud, NULL, 0, state_size(LG));
+  lua_State *L; // lua状态机
+  global_State *g; // 全局状态机
+  void *l = (*f)(ud, NULL, 0, state_size(LG)); // 申请一个LG内存
   if (l == NULL) return NULL;
-  L = tostate(l);
-  g = &((LG *)L)->g;
-  L->next = NULL;
-  L->tt = LUA_TTHREAD;
-  g->currentwhite = bit2mask(WHITE0BIT, FIXEDBIT);
+  L = tostate(l); // 获取lua状态机
+  g = &((LG *)L)->g; // 获取全局状态机
+  L->next = NULL; // 下一个线程为NULL, 对线程的管理使用的也是链表形式,和TValue一样。
+  L->tt = LUA_TTHREAD; // 类型是个线程
+
+  // 下面这三行都是在设置标志
+  g->currentwhite = bit2mask(WHITE0BIT, FIXEDBIT); // 没懂
   L->marked = luaC_white(g);
   set2bits(L->marked, FIXEDBIT, SFIXEDBIT);
+
+
   preinit_state(L, g);
   g->frealloc = f;
   g->ud = ud;
-  g->mainthread = L;
+  g->mainthread = L; // 全局状态机的主线程，就是这个L
+
+  // upvalue 双向链表
   g->uvhead.u.l.prev = &g->uvhead;
   g->uvhead.u.l.next = &g->uvhead;
+
   g->GCthreshold = 0;  /* mark it as unfinished state */
+
+  // 存放字符串的hash表
   g->strt.size = 0;
   g->strt.nuse = 0;
   g->strt.hash = NULL;
+
+
   setnilvalue(registry(L));
-  luaZ_initbuffer(L, &g->buff);
-  g->panic = NULL;
-  g->gcstate = GCSpause;
-  g->rootgc = obj2gco(L);
-  g->sweepstrgc = 0;
-  g->sweepgc = &g->rootgc;
+  luaZ_initbuffer(L, &g->buff); // 初始化buffer，这个buffer是虚拟机进行io读写时用到的
+  g->panic = NULL; // 遇到错误时调用的panic函数
+  g->gcstate = GCSpause; // gc停止
+  g->rootgc = obj2gco(L); // 可gc对象的列表, 新创建的状态机只有本身是可gc的，把自己放到链表中
+
+  g->sweepstrgc = 0; // 一个标志，是否正在对存放字符串的hash表进行gc回收.hash表不够大，进行重新分配后要对旧hash表进行回收.初始化为0表示没有进行回收，1表示正在进行回收
+
+  g->sweepgc = &g->rootgc; // gc链表中，gc进行的位置
   g->gray = NULL;
   g->grayagain = NULL;
   g->weak = NULL;
   g->tmudata = NULL;
+
+  // 全局状态机总共申请内存的大小计数
   g->totalbytes = sizeof(LG);
-  g->gcpause = LUAI_GCPAUSE;
-  g->gcstepmul = LUAI_GCMUL;
+
+  g->gcpause = LUAI_GCPAUSE; // gc频度控制
+  g->gcstepmul = LUAI_GCMUL; // 同样是gc频度
   g->gcdept = 0;
+
+  // 各个数据类型的元表设置,初始为NULL
   for (i=0; i<NUM_TAGS; i++) g->mt[i] = NULL;
+
   if (luaD_rawrunprotected(L, f_luaopen, NULL) != 0) {
     /* memory allocation error: free partial state */
     close_state(L);

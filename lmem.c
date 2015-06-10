@@ -72,6 +72,11 @@ void *luaM_toobig (lua_State *L) {
 
 /*
 ** generic allocation routine.
+ * 如果nsize是0，就直接free掉block指针指向的内存
+ * 否则就realloc(block, nsize)。
+ * realloc函数就是以block指针为基础，将内存扩张到nsize大小。如果内存不够，
+ * 就新申请内存，将旧的数据copy到新的内存空间中.
+ * 对于用户来说，就像是一个向量，数据还在，只是空间扩大了
 */
 void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
   global_State *g = G(L);
